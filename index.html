@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#08090c">
+<link rel="manifest" href="manifest.webmanifest">
+<title>SHIFT</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#08090c;color:#f5f7fa;font-family:system-ui,-apple-system,sans-serif;overflow:hidden;touch-action:none}
+.app{height:100%;width:min(100%,520px);margin:auto;padding:calc(env(safe-area-inset-top) + 16px) 16px calc(env(safe-area-inset-bottom) + 14px);display:flex;flex-direction:column}
+header{display:flex;justify-content:space-between;align-items:end;margin-bottom:14px}.brand{font-weight:900;font-size:29px;letter-spacing:.2em}.tag{font-size:9px;color:#8d94a1;letter-spacing:.16em}.score{text-align:right}.score span{display:block;font-size:9px;color:#8d94a1;letter-spacing:.15em}.score b{font-size:27px}
+.board{width:100%;aspect-ratio:1;padding:8px;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;background:#0e1117;border:1px solid #252a34;border-radius:22px;box-shadow:0 20px 70px #0009}
+.cell{background:#151922;border-radius:9px;display:grid;place-items:center}.tile{width:70%;height:70%;display:grid;place-items:center;border-radius:23%;font-size:clamp(12px,4vw,18px);font-weight:900;box-shadow:inset 0 0 0 1px #fff2,0 5px 12px #0009}.t1{background:#f3f5f7;color:#111}.t2{background:#b8c0cb;color:#111}.t3{background:#7e8999}.t4{background:#586373}.t5{background:#343c4a;border:1px solid #8b96a7}.t6{background:#171c25;border:1px solid #e8edf4}.t7{background:#fff;color:#111;box-shadow:0 0 25px #fff7}
+.buttons{display:flex;gap:8px;margin-top:12px}.btn{flex:1;border:1px solid #292e38;background:#11141a;color:#f5f7fa;border-radius:13px;padding:13px;font-weight:800;font-size:12px}.hint{text-align:center;color:#7e8592;font-size:11px;line-height:1.45;margin-top:10px}
+.overlay{position:fixed;inset:0;background:#000c;display:none;place-items:center;padding:20px}.modal{width:min(390px,92vw);background:#13161d;border:1px solid #303641;border-radius:23px;padding:28px;text-align:center}.modal h1{font-size:31px;margin:0 0 5px}.modal p{color:#8d94a1;margin:0 0 18px}.primary{width:100%;background:#f4f6f8;color:#111;border:0}
+.combo{position:fixed;left:50%;top:43%;transform:translate(-50%,-50%);font-size:27px;font-weight:950;letter-spacing:.08em;opacity:0;pointer-events:none}.combo.show{animation:pop .62s ease-out}@keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-66%) scale(1)}}
+</style>
+</head>
+<body>
+<main class="app">
+<header><div><div class="brand">SHIFT</div><div class="tag">CORE PROTOTYPE · 0.2</div></div><div class="score"><span>SCORE</span><b id="score">0</b></div></header>
+<div id="board" class="board"></div>
+<div class="buttons"><button class="btn" id="undo">↶ UNDO</button><button class="btn" id="restart">↻ NEW RUN</button></div>
+<div class="hint">Wische ← → ↑ ↓ · Gleiche Formen verschmelzen.<br>Schaffe Kettenreaktionen und brich deinen Highscore.</div>
+</main>
+<div id="combo" class="combo"></div>
+<div id="overlay" class="overlay"><section class="modal"><h1>GAME OVER</h1><p>Kein gültiger Zug mehr.</p><div style="color:#8d94a1;font-size:10px;letter-spacing:.15em">SCORE</div><div id="final" style="font-size:42px;font-weight:950;margin:2px 0 18px">0</div><button class="btn primary" id="again">TRY AGAIN</button></section></div>
+<script>
+const N=7,S='shift_best';let g=[],score=0,best=+localStorage.getItem(S)||0,hist=[];
+const sy=['●','◆','■','▲','✦','⬢','✧'];const E=()=>Array.from({length:N},()=>Array(N).fill(0));
+function add(){let e=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(!g[r][c])e.push([r,c]);if(!e.length)return;let p=e[Math.floor(Math.random()*e.length)];g[p[0]][p[1]]=Math.random()<.9?1:2}
+function draw(){board.innerHTML='';for(let r=0;r<N;r++)for(let c=0;c<N;c++){let x=document.createElement('div');x.className='cell';let v=g[r][c];if(v){let t=document.createElement('div');t.className='tile t'+Math.min(v,7);t.textContent=sy[Math.min(v-1,6)];x.append(t)}board.append(x)}document.getElementById('score').textContent=score.toLocaleString('de-DE')}
+function compress(a){let z=a.filter(Boolean),o=[],combo=0;for(let i=0;i<z.length;i++){if(i<z.length-1&&z[i]===z[i+1]){o.push(z[i]+1);score+=10*(z[i]+1);i++;combo++}else o.push(z[i])}while(o.length<N)o.push(0);return[o,combo]}
+function move(d){let old=g.map(r=>r.slice()),os=score,n=E(),comb=0,changed=false;if(d<2){for(let r=0;r<N;r++){let a=g[r].slice();if(d)a.reverse();let[z,k]=compress(a);if(d)z.reverse();n[r]=z;comb+=k;changed||=JSON.stringify(old[r])!==JSON.stringify(z)}}else{for(let c=0;c<N;c++){let a=g.map(r=>r[c]);if(d===3)a.reverse();let[z,k]=compress(a);if(d===3)z.reverse();for(let r=0;r<N;r++)n[r][c]=z[r];comb+=k;changed||=a.some((v,i)=>v!==z[i])}}if(!changed)return;hist.push([old,os]);g=n;add();draw();if(comb>1)pop('COMBO ×'+comb);if(!has())setTimeout(over,180)}
+function has(){for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(!g[r][c])return true;if(c+1<N&&g[r][c]===g[r][c+1])return true;if(r+1<N&&g[r][c]===g[r+1][c])return true}return false}
+function start(){g=E();score=0;hist=[];add();add();draw();overlay.style.display='none'}
+function over(){if(score>best){best=score;localStorage.setItem(S,best)}final.textContent=score.toLocaleString('de-DE');overlay.style.display='grid'}
+function pop(t){combo.textContent=t;combo.classList.remove('show');void combo.offsetWidth;combo.classList.add('show')}
+restart.onclick=start;again.onclick=start;undo.onclick=()=>{let h=hist.pop();if(h){g=h[0];score=h[1];draw()}}
+let sx=0,syy=0;board.addEventListener('touchstart',e=>{sx=e.changedTouches[0].clientX;syy=e.changedTouches[0].clientY},{passive:true});board.addEventListener('touchend',e=>{let x=e.changedTouches[0].clientX-sx,y=e.changedTouches[0].clientY-syy;if(Math.max(Math.abs(x),Math.abs(y))<25)return;move(Math.abs(x)>Math.abs(y)?(x>0?1:0):(y>0?3:2))},{passive:true});addEventListener('keydown',e=>{let m={ArrowLeft:0,ArrowRight:1,ArrowUp:2,ArrowDown:3}[e.key];if(m!==undefined){e.preventDefault();move(m)}});start();
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.error));}
+</script>
+</body></html>
